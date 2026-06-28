@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>销售额 vs 销售总额</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --blue: #2d5be3;
+    --orange: #f97316;
+    --green: #22c55e;
+    --purple: #8b5cf6;
+    --red: #ef4444;
+    --bg: #f0f4ff;
+    --card: #ffffff;
+    --grid: #c7d4f5;
+    --text: #1a2744;
+    --muted: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 20px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  header h1 { font-size: 24px; font-weight: 700; position: relative; }
+  header p { font-size: 18px; color: #a0b4e0; margin-top: 6px; position: relative; line-height: 1.6; }
+
+  .main { padding: 24px 20px; max-width: 960px; margin: 0 auto; }
+
+  /* 提示条 */
+  .hint {
+    background: #eff6ff; border-left: 3px solid var(--blue);
+    padding: 12px 16px; border-radius: 0 8px 8px 0;
+    font-size: 18px; color: var(--navy); line-height: 1.7; margin-bottom: 20px;
+  }
+  .hint strong { color: var(--blue); }
+
+  /* 品牌卡片区 */
+  .brand-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px;
+  }
+  .brand-card {
+    background: var(--card); border-radius: 14px; padding: 16px 12px 14px;
+    border: 2px solid #e2e8f4; text-align: center; cursor: pointer;
+    transition: all 0.2s; position: relative; user-select: none;
+  }
+  .brand-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(45,91,227,0.12); }
+  .brand-card.off { opacity: 0.4; filter: grayscale(0.7); }
+  .brand-card .check {
+    position: absolute; top: 10px; right: 10px; width: 22px; height: 22px;
+    border-radius: 6px; border: 2px solid #cbd5e1; background: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: white; font-weight: 700;
+  }
+  .brand-card.on .check { border-color: var(--blue); background: var(--blue); }
+  .brand-card img {
+    width: 88px; height: 88px; object-fit: contain; margin: 4px auto 8px; display: block;
+  }
+  .brand-card .bname { font-size: 18px; font-weight: 700; color: var(--navy); }
+  .brand-card .blabel { font-size: 18px; color: var(--muted); margin-top: 8px; }
+  .brand-card .bval { font-size: 26px; font-weight: 700; margin-top: 2px; }
+  .brand-card .bunit { font-size: 18px; font-weight: 500; color: var(--muted); }
+
+  .c-blue { color: var(--blue); }
+  .c-orange { color: var(--orange); }
+  .c-green { color: var(--green); }
+  .c-purple { color: var(--purple); }
+
+  /* 控制按钮 */
+  .controls { display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 18px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--orange); color: white; }
+  .btn-primary:hover { background: #ea6c05; }
+  .btn-reset { background: white; color: var(--navy); border: 1.5px solid #d0d9f0; }
+  .btn-reset:hover { border-color: var(--blue); }
+
+  /* 累加可视化 */
+  .stack-card {
+    background: var(--card); border-radius: 14px; padding: 22px 20px;
+    border: 2px solid #e2e8f4; margin-bottom: 22px;
+  }
+  .stack-card h3 { font-size: 18px; color: var(--muted); font-weight: 500; margin-bottom: 16px; }
+
+  .stack-track {
+    display: flex; width: 100%; height: 56px; border-radius: 10px; overflow: hidden;
+    background: #eef2ff; border: 1.5px solid #e2e8f4;
+  }
+  .stack-seg {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 18px; white-space: nowrap;
+    transition: width 0.6s ease; overflow: hidden; width: 0;
+  }
+  .seg-blue { background: var(--blue); }
+  .seg-orange { background: var(--orange); }
+  .seg-green { background: var(--green); }
+  .seg-purple { background: var(--purple); }
+
+  .formula-line {
+    font-size: 20px; margin-top: 18px; text-align: center; line-height: 1.9;
+    color: var(--navy); font-weight: 500;
+  }
+  .formula-line .plus { color: var(--muted); margin: 0 6px; }
+  .formula-line .eq { color: var(--muted); margin: 0 10px; }
+
+  /* 总额面板 */
+  .total-card {
+    background: linear-gradient(135deg, #1a2744, #2d3f6e);
+    border-radius: 14px; padding: 24px; color: white; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .total-card::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .total-card .t-label {
+    font-size: 18px; letter-spacing: 1.5px; color: #a0b4e0; position: relative;
+  }
+  .total-card .t-value {
+    font-size: 52px; font-weight: 700; position: relative; margin-top: 4px;
+  }
+  .total-card .t-value .t-unit { font-size: 24px; font-weight: 500; color: #cdd9f5; }
+  .total-card .t-sub {
+    font-size: 18px; color: #a0b4e0; margin-top: 8px; position: relative; line-height: 1.6;
+  }
+
+  @media (max-width: 700px) {
+    .brand-grid { grid-template-columns: repeat(2, 1fr); }
+    .controls .btn { flex: 1; }
+    .formula-line { font-size: 17px; }
+  }
+</style>
+</head>
+<body class="grid-bg">
+
+<header>
+  <h1>销售额 vs 销售总额</h1>
+  <p>马哥的"圆浮岛手机城"里有 4 个手机品牌。去年 10 月，每个品牌都卖出了一笔销售额——把它们全部加起来，就是手机城去年 10 月的销售总额。</p>
+</header>
+
+<div class="main">
+
+  <div class="hint">
+    👆 点击下方手机卡片可以<strong>选中 / 取消</strong>该品牌，观察"销售总额"如何随之变化。<br>
+    💡 <strong>单个品牌的销售额</strong>只是它自己卖出的金额；<strong>销售总额</strong>是所有品牌销售额<strong>加在一起</strong>的金额。
+  </div>
+
+  <div class="brand-grid" id="brandGrid"></div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="btnAll" onclick="selectAll()">📱 选中全部 4 个品牌</button>
+    <button class="btn btn-reset" onclick="clearAll()">↺ 全部取消</button>
+  </div>
+
+  <div class="stack-card">
+    <h3>📊 各品牌销售额累加成销售总额（条形长度 = 金额大小）</h3>
+    <div class="stack-track" id="stackTrack"></div>
+    <div class="formula-line" id="formulaLine"></div>
+  </div>
+
+  <div class="total-card">
+    <div class="t-label">去年 10 月 · 圆浮岛手机城 · 销售总额</div>
+    <div class="t-value"><span id="totalVal">0</span> <span class="t-unit">万元</span></div>
+    <div class="t-sub" id="totalSub">当前已选中 0 个品牌</div>
+  </div>
+
+</div>
+
+<script>
+  const BRANDS = [
+    { name: '马大强手机', sales: 480, color: 'blue',   seg: 'seg-blue',   img: 'https://static.moxtcontent.com/public/resource/ai/gen/08d6c4d7-e7fa-457e-8241-57c108bf811f.png' },
+    { name: '马二强手机', sales: 320, color: 'orange', seg: 'seg-orange', img: 'https://static.moxtcontent.com/public/resource/ai/gen/93956d34-2370-484b-95a4-7d7a4f5c1186.png' },
+    { name: '马三强手机', sales: 256, color: 'green',  seg: 'seg-green',  img: 'https://static.moxtcontent.com/public/resource/ai/gen/caff69dd-8945-4425-83dc-accbfbf1bb3c.png' },
+    { name: '马四强手机', sales: 144, color: 'purple', seg: 'seg-purple', img: 'https://static.moxtcontent.com/public/resource/ai/gen/117835d1-5a08-46c7-8341-ba43d12a64cc.png' },
+  ];
+
+  const GRAND_TOTAL = BRANDS.reduce((s, b) => s + b.sales, 0); // 1200，用于条形比例的固定基准
+  let selected = BRANDS.map(() => true);
+
+  function renderCards() {
+    const grid = document.getElementById('brandGrid');
+    grid.innerHTML = '';
+    BRANDS.forEach((b, i) => {
+      const card = document.createElement('div');
+      card.className = 'brand-card ' + (selected[i] ? 'on' : 'off');
+      card.onclick = () => toggle(i);
+      card.innerHTML = `
+        <div class="check">${selected[i] ? '✓' : ''}</div>
+        <img src="${b.img}" alt="${b.name}">
+        <div class="bname">${b.name}</div>
+        <div class="blabel">销售额</div>
+        <div class="bval c-${b.color}">${b.sales}<span class="bunit"> 万元</span></div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function renderStack() {
+    const track = document.getElementById('stackTrack');
+    track.innerHTML = '';
+    BRANDS.forEach((b, i) => {
+      const seg = document.createElement('div');
+      seg.className = 'stack-seg ' + b.seg;
+      track.appendChild(seg);
+      // 用固定的总基准换算宽度，让条形长度真实反映金额大小
+      const w = selected[i] ? (b.sales / GRAND_TOTAL * 100) : 0;
+      requestAnimationFrame(() => {
+        seg.style.width = w + '%';
+        seg.textContent = selected[i] && b.sales / GRAND_TOTAL > 0.12 ? b.sales : '';
+      });
+    });
+  }
+
+  function renderFormula() {
+    const chosen = BRANDS.filter((b, i) => selected[i]);
+    const line = document.getElementById('formulaLine');
+    if (chosen.length === 0) {
+      line.innerHTML = '<span style="color:var(--muted)">请至少选中一个品牌</span>';
+      return;
+    }
+    const parts = chosen.map(b => `<span class="c-${b.color}">${b.sales}</span>`).join('<span class="plus">+</span>');
+    const total = chosen.reduce((s, b) => s + b.sales, 0);
+    line.innerHTML = `销售总额 <span class="eq">=</span> ${parts} <span class="eq">=</span> <strong style="font-size:24px">${total}</strong> 万元`;
+  }
+
+  function renderTotal() {
+    const count = selected.filter(Boolean).length;
+    const total = BRANDS.reduce((s, b, i) => s + (selected[i] ? b.sales : 0), 0);
+    animateNumber(document.getElementById('totalVal'), total);
+    const sub = document.getElementById('totalSub');
+    if (count === BRANDS.length) {
+      sub.innerHTML = `4 个品牌全部计入 → 这就是手机城去年 10 月真正的<strong style="color:#fff">销售总额</strong>`;
+    } else if (count === 0) {
+      sub.textContent = '当前未选中任何品牌，销售总额为 0';
+    } else {
+      sub.innerHTML = `当前只计入了 ${count} 个品牌，<strong style="color:#fff">少算了品牌就不是完整的销售总额</strong>`;
+    }
+  }
+
+  let animTimer = null;
+  function animateNumber(el, target) {
+    if (animTimer) cancelAnimationFrame(animTimer);
+    const startVal = parseInt(el.textContent.replace(/\D/g, '')) || 0;
+    const startT = performance.now();
+    const dur = 500;
+    function tick(now) {
+      const p = Math.min((now - startT) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(startVal + (target - startVal) * ease);
+      if (p < 1) animTimer = requestAnimationFrame(tick);
+    }
+    animTimer = requestAnimationFrame(tick);
+  }
+
+  function render() {
+    renderCards();
+    renderStack();
+    renderFormula();
+    renderTotal();
+  }
+
+  function toggle(i) { selected[i] = !selected[i]; render(); }
+  function selectAll() { selected = BRANDS.map(() => true); render(); }
+  function clearAll() { selected = BRANDS.map(() => false); render(); }
+
+  render();
+</script>
+</body>
+</html>

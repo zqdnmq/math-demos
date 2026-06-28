@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高分模型（高线与角平分线的夹角）</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --blue: #2d5be3;
+    --orange: #f97316;
+    --green: #22c55e;
+    --purple: #8b5cf6;
+    --red: #ef4444;
+    --bg: #f0f4ff;
+    --card: #ffffff;
+    --grid: #c7d4f5;
+    --text: #1a2744;
+    --muted: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 20px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  header .label {
+    font-size: 18px; font-weight: 500; letter-spacing: 2px;
+    color: #7aa3ff; text-transform: uppercase; margin-bottom: 6px; position: relative;
+  }
+  header h1 { font-size: 24px; font-weight: 700; position: relative; }
+  header p { font-size: 20px; color: #a0b4e0; margin-top: 6px; position: relative; line-height: 1.6; }
+
+  .main { padding: 24px 20px; max-width: 980px; margin: 0 auto; }
+
+  .hint {
+    background: #eff6ff; border-left: 3px solid var(--blue);
+    padding: 12px 16px; border-radius: 0 8px 8px 0;
+    font-size: 20px; color: var(--navy); line-height: 1.7; margin-bottom: 20px;
+  }
+  .hint strong { color: var(--blue); }
+
+  .stage { display: flex; gap: 18px; flex-wrap: wrap; align-items: stretch; }
+
+  .draw-card {
+    background: var(--card); border-radius: 14px; border: 1.5px solid #e2e8f4;
+    padding: 14px; flex: 1 1 480px; min-width: 320px;
+  }
+  svg { width: 100%; height: auto; display: block; touch-action: none; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; padding: 0 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 20px; color: var(--muted); }
+  .legend-line { width: 22px; height: 0; border-top-width: 3px; border-top-style: solid; }
+
+  .side { flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; gap: 16px; }
+
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 20px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-reset { background: white; color: var(--navy); border: 1.5px solid #d0d9f0; }
+  .btn-reset:hover { border-color: var(--blue); }
+  .btn-primary { background: var(--orange); color: white; }
+  .btn-primary:hover { background: #ea6c05; }
+
+  .eq-card {
+    background: var(--card); border-radius: 14px; border: 1.5px solid #e2e8f4; padding: 20px;
+  }
+  .eq-card h3 { font-size: 20px; color: var(--muted); font-weight: 500; margin-bottom: 14px; }
+
+  .angle-rows { display: flex; flex-direction: column; gap: 8px; }
+  .angle-line { display: flex; gap: 24px; }
+  .angle-row {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    font-size: 20px; padding: 4px 0;
+  }
+  .angle-row .nm { font-weight: 600; }
+  .angle-row .vv { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .angle-row .eq { font-weight: 600; color: var(--muted); }
+
+  .sum-box {
+    margin-top: 14px; padding: 16px; border-radius: 12px;
+    background: #f8faff; border: 1.5px solid #e2e8f4; text-align: center;
+  }
+  .sum-line {
+    font-size: 21px; font-weight: 700; margin: 6px 0; font-variant-numeric: tabular-nums; line-height: 1.5;
+  }
+  .sum-line .lhs { color: var(--orange); }
+  .sum-line .rhs { color: var(--purple); }
+  .verdict {
+    display: none; margin-top: 8px; padding: 5px 14px; border-radius: 99px;
+    font-size: 20px; font-weight: 700; background: #dcfce7; color: #15803d;
+  }
+  .btn-reveal {
+    margin-top: 10px; padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 20px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+    background: #2d5be3; color: white; display: inline-block;
+  }
+  .btn-reveal:hover { background: #1e40af; }
+  .btn-reveal.hidden { display: none; }
+
+  .info-box {
+    background: #eff6ff; border-left: 3px solid var(--blue);
+    padding: 14px 18px; border-radius: 0 8px 8px 0;
+    font-size: 18px; color: var(--navy); line-height: 1.8; margin-top: 20px;
+  }
+  .info-box .formula {
+    display: inline-block; background: #dbeafe; padding: 2px 8px; border-radius: 4px;
+    font-weight: 700; color: var(--blue); margin: 0 2px;
+  }
+
+  .seg { stroke: var(--navy); stroke-width: 2.5; fill: none; }
+  .tri-fill { fill: rgba(45,91,227,0.07); }
+  .alt-line { stroke: var(--orange); stroke-width: 2.5; }
+  .bis-line { stroke: var(--purple); stroke-width: 2.5; }
+  .base-ext { stroke: #cbd5e1; stroke-width: 1.6; stroke-dasharray: 5 5; }
+  .arc-b { stroke: var(--green); stroke-width: 2.5; fill: none; }
+  .arc-dae { stroke: var(--orange); stroke-width: 3; fill: none; }
+  .arc-bis { stroke: var(--purple); stroke-width: 2; fill: none; }
+  .vlabel { font: 700 20px 'Noto Sans SC', sans-serif; fill: var(--navy); }
+  .flabel { font: 700 20px 'Noto Sans SC', sans-serif; fill: var(--muted); }
+  .alabel-b { font: 700 20px 'Noto Sans SC', sans-serif; fill: #15803d; }
+  .alabel-dae { font: 700 20px 'Noto Sans SC', sans-serif; fill: var(--orange); }
+  .alabel-bis { font: 700 20px 'Noto Sans SC', sans-serif; fill: var(--purple); }
+  .right-angle { stroke: var(--orange); stroke-width: 2; fill: none; }
+  .handle { fill: #fff; stroke: var(--navy); stroke-width: 2.5; cursor: grab; }
+  .handle.apt { stroke: var(--blue); fill: #eff6ff; }
+
+  @media (max-width: 760px) { .stage { flex-direction: column; } }
+</style>
+</head>
+<body class="grid-bg">
+
+<header>
+  <h1>高分模型</h1>
+  <p>从同一个顶点 A 出发，"高"（高线 AD）和"分"（角平分线 AE）夹出一个角。拖动顶点 A，看看这个夹角 ∠DAE 和底角 ∠B、∠C 有什么关系。</p>
+</header>
+
+<div class="main">
+
+  <div class="hint">
+    👆 拖动顶点 <strong>A</strong>（B、C 可沿底边左右拖动）。
+  </div>
+
+  <div class="stage">
+    <div class="draw-card">
+      <svg id="svg" viewBox="0 0 600 460">
+        <g id="fills"></g>
+        <g id="base"></g>
+        <g id="lines"></g>
+        <g id="arcs"></g>
+        <g id="arcLabels"></g>
+        <g id="pointLabels"></g>
+        <g id="handles"></g>
+      </svg>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-line" style="border-color:var(--orange)"></span>高线 AD</div>
+        <div class="legend-item"><span class="legend-line" style="border-color:var(--purple)"></span>角平分线 AE</div>
+        <div class="legend-item"><span class="legend-line" style="border-color:var(--navy)"></span>三角形 ABC</div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="controls">
+        <button class="btn btn-reset" onclick="resetPts()">↺ 复原图形</button>
+        <button class="btn btn-primary" onclick="randomize()">🎲 随机摆一个</button>
+      </div>
+
+      <div class="eq-card">
+        <h3>📐 各角的实时度数</h3>
+        <div class="angle-rows">
+          <div class="angle-line">
+            <div class="angle-row"><span class="nm" style="color:#15803d">∠B</span><span class="eq">=</span><span class="vv" id="vB">—</span></div>
+            <div class="angle-row"><span class="nm" style="color:#15803d">∠C</span><span class="eq">=</span><span class="vv" id="vC">—</span></div>
+          </div>
+          <div class="angle-line">
+            <div class="angle-row"><span class="nm" style="color:var(--orange)">∠DAE（高与角分线夹角）</span><span class="eq">=</span><span class="vv" id="vDAE">—</span></div>
+          </div>
+        </div>
+        <div class="sum-box">
+          <div class="sum-line"><span class="rhs">|∠B−∠C| = <span id="valHalf">—</span></span></div>
+          <div class="sum-line"><span class="lhs">∠DAE = <span id="valDAE">—</span></span></div>
+          <button class="btn-reveal" id="revealBtn" onclick="revealVerdict()">👁 显示结论</button>
+          <div class="verdict" id="verdict">结论：∠DAE = |∠B−∠C|÷2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const svg = document.getElementById('svg');
+  const NS = 'http://www.w3.org/2000/svg';
+  const BASE_Y = 360;
+
+  const DEFAULT = {
+    A: { x: 380, y: 100 },
+    B: { x: 110, y: BASE_Y },
+    C: { x: 500, y: BASE_Y },
+  };
+  let P = { A: {...DEFAULT.A}, B: {...DEFAULT.B}, C: {...DEFAULT.C} };
+
+  function toSvg(evt) {
+    const r = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    return {
+      x: (evt.clientX - r.left) / r.width * vb.width,
+      y: (evt.clientY - r.top) / r.height * vb.height,
+    };
+  }
+
+  function angleAt(V, p1, p2) {
+    const a1 = Math.atan2(p1.y - V.y, p1.x - V.x);
+    const a2 = Math.atan2(p2.y - V.y, p2.x - V.x);
+    let d = a2 - a1;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    return d;
+  }
+  const deg = (rad) => Math.abs(rad) * 180 / Math.PI;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  function el(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function arcPath(V, p1, p2, r) {
+    const a1 = Math.atan2(p1.y - V.y, p1.x - V.x);
+    const d = angleAt(V, p1, p2);
+    const end = a1 + d;
+    const x1 = V.x + r * Math.cos(a1), y1 = V.y + r * Math.sin(a1);
+    const x2 = V.x + r * Math.cos(end), y2 = V.y + r * Math.sin(end);
+    const sweep = d > 0 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 0 ${sweep} ${x2} ${y2}`;
+  }
+  function arcLabelPos(V, p1, p2, r) {
+    const a1 = Math.atan2(p1.y - V.y, p1.x - V.x);
+    const d = angleAt(V, p1, p2);
+    const mid = a1 + d / 2;
+    return { x: V.x + r * Math.cos(mid), y: V.y + r * Math.sin(mid) };
+  }
+  // A 在直线 BC 上的垂足
+  function footOnLine(A, B, C) {
+    const bc = { x: C.x - B.x, y: C.y - B.y };
+    const t = ((A.x - B.x) * bc.x + (A.y - B.y) * bc.y) / (bc.x * bc.x + bc.y * bc.y);
+    return { x: B.x + t * bc.x, y: B.y + t * bc.y };
+  }
+
+  function render() {
+    const { A, B, C } = P;
+    const D = footOnLine(A, B, C);          // 高线垂足
+    const ab = dist(A, B), ac = dist(A, C);
+    const E = { x: B.x + ab / (ab + ac) * (C.x - B.x), y: B.y + ab / (ab + ac) * (C.y - B.y) }; // 角平分线交点
+
+    const fills = document.getElementById('fills');
+    const base = document.getElementById('base');
+    const lines = document.getElementById('lines');
+    const arcs = document.getElementById('arcs');
+    const arcLabels = document.getElementById('arcLabels');
+    const ptLabels = document.getElementById('pointLabels');
+    [fills, base, lines, arcs, arcLabels, ptLabels].forEach(g => g.innerHTML = '');
+
+    // 三角形填充
+    fills.appendChild(el('polygon', { points: `${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`, class: 'tri-fill' }));
+
+    // 底边
+    base.appendChild(el('line', { x1: B.x, y1: B.y, x2: C.x, y2: C.y, class: 'seg' }));
+
+    // 两条腰
+    lines.appendChild(el('line', { x1: A.x, y1: A.y, x2: B.x, y2: B.y, class: 'seg' }));
+    lines.appendChild(el('line', { x1: A.x, y1: A.y, x2: C.x, y2: C.y, class: 'seg' }));
+    // 高线 AD、角平分线 AE
+    lines.appendChild(el('line', { x1: A.x, y1: A.y, x2: D.x, y2: D.y, class: 'alt-line' }));
+    lines.appendChild(el('line', { x1: A.x, y1: A.y, x2: E.x, y2: E.y, class: 'bis-line' }));
+
+    // D 处直角标记
+    const ux = (A.x - D.x), uy = (A.y - D.y);
+    const ul = Math.hypot(ux, uy) || 1;
+    const vx = (C.x - D.x), vy = (C.y - D.y);
+    const vl = Math.hypot(vx, vy) || 1;
+    const s = 14;
+    const p1 = { x: D.x + ux / ul * s, y: D.y + uy / ul * s };
+    const p2 = { x: D.x + vx / vl * s, y: D.y + vy / vl * s };
+    const p3 = { x: p1.x + vx / vl * s, y: p1.y + vy / vl * s };
+    lines.appendChild(el('polyline', { points: `${p1.x},${p1.y} ${p3.x},${p3.y} ${p2.x},${p2.y}`, class: 'right-angle' }));
+
+    // 角度
+    const angB = angleAt(B, A, C), angC = angleAt(C, A, B);
+    const angDAE = angleAt(A, D, E);
+    const angBAE = angleAt(A, B, E), angEAC = angleAt(A, E, C);
+
+    // ∠DAE 按公式 |∠B−∠C|÷2 显示（用面板显示的差值除以 2）
+    const diffDisp = Math.abs(deg(angB) - deg(angC));
+    const daeText = (Number(diffDisp.toFixed(1)) / 2).toFixed(2) + '°';
+
+    // ∠B、∠C 弧
+    arcs.appendChild(el('path', { d: arcPath(B, A, C, 28), class: 'arc-b' }));
+    arcs.appendChild(el('path', { d: arcPath(C, A, B, 28), class: 'arc-b' }));
+    let lp = arcLabelPos(B, A, C, 44);
+    let t = el('text', { x: lp.x, y: lp.y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'alabel-b' });
+    t.textContent = deg(angB).toFixed(1) + '°'; arcLabels.appendChild(t);
+    lp = arcLabelPos(C, A, B, 44);
+    t = el('text', { x: lp.x, y: lp.y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'alabel-b' });
+    t.textContent = deg(angC).toFixed(1) + '°'; arcLabels.appendChild(t);
+
+    // 角平分线两半（小弧，示意相等）
+    arcs.appendChild(el('path', { d: arcPath(A, B, E, 52), class: 'arc-bis' }));
+    arcs.appendChild(el('path', { d: arcPath(A, E, C, 60), class: 'arc-bis' }));
+
+    // ∠DAE 高亮弧
+    arcs.appendChild(el('path', { d: arcPath(A, D, E, 34), class: 'arc-dae' }));
+    lp = arcLabelPos(A, D, E, 90);
+    t = el('text', { x: lp.x, y: lp.y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'alabel-dae' });
+    t.textContent = daeText; arcLabels.appendChild(t);
+
+    // 顶点 / 足标签
+    ptLabels.appendChild(mkLabel('A', A.x, A.y - 22, 'vlabel'));
+    ptLabels.appendChild(mkLabel('B', B.x - 22, B.y + 6, 'vlabel'));
+    ptLabels.appendChild(mkLabel('C', C.x + 22, C.y + 6, 'vlabel'));
+    ptLabels.appendChild(mkLabel('D', D.x, D.y + 26, 'flabel'));
+    ptLabels.appendChild(mkLabel('E', E.x, E.y + 26, 'flabel'));
+
+    // 面板
+    const b = deg(angB), c = deg(angC);
+    document.getElementById('vB').textContent = b.toFixed(1) + '°';
+    document.getElementById('vC').textContent = c.toFixed(1) + '°';
+    document.getElementById('vDAE').textContent = daeText;
+    document.getElementById('valDAE').textContent = daeText;
+    document.getElementById('valHalf').textContent = Math.abs(b - c).toFixed(1) + '°';
+
+    drawHandles();
+  }
+
+  function mkLabel(txt, x, y, cls) {
+    const t = el('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: cls });
+    t.textContent = txt;
+    return t;
+  }
+
+  function drawHandles() {
+    const g = document.getElementById('handles');
+    g.innerHTML = '';
+    [['A', P.A, true], ['B', P.B, false], ['C', P.C, false]].forEach(([nm, v, isA]) => {
+      g.appendChild(el('circle', { cx: v.x, cy: v.y, r: 12, class: 'handle' + (isA ? ' apt' : ''), 'data-pt': nm }));
+    });
+  }
+
+  let dragging = null;
+  svg.addEventListener('pointerdown', e => {
+    if (e.target.classList.contains('handle')) {
+      dragging = e.target.getAttribute('data-pt');
+      svg.setPointerCapture(e.pointerId);
+    }
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const pt = toSvg(e);
+    if (dragging === 'A') {
+      P.A.x = Math.max(40, Math.min(560, pt.x));
+      P.A.y = Math.max(40, Math.min(BASE_Y - 40, pt.y));
+    } else if (dragging === 'B') {
+      P.B.x = Math.max(40, Math.min(P.C.x - 60, pt.x)); // 限制在 C 左侧，锁定在底边
+      P.B.y = BASE_Y;
+    } else if (dragging === 'C') {
+      P.C.x = Math.max(P.B.x + 60, Math.min(560, pt.x));
+      P.C.y = BASE_Y;
+    }
+    render();
+  });
+  svg.addEventListener('pointerup', () => { dragging = null; });
+
+  function resetPts() {
+    P = { A: {...DEFAULT.A}, B: {...DEFAULT.B}, C: {...DEFAULT.C} };
+    render();
+  }
+  function randomize() {
+    P.B = { x: 80 + Math.random() * 80, y: BASE_Y };
+    P.C = { x: 440 + Math.random() * 90, y: BASE_Y };
+    P.A = { x: 180 + Math.random() * 280, y: 70 + Math.random() * 130 };
+    render();
+  }
+
+  function revealVerdict() {
+    document.getElementById('verdict').style.display = 'inline-block';
+    document.getElementById('revealBtn').style.display = 'none';
+  }
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>频数分布直方图构建器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+  :root {
+    --navy: #1a2744; --blue: #2d5be3; --orange: #f97316;
+    --bg: #f0f4ff; --grid: #c7d4f5; --muted: #64748b; --card: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans SC', sans-serif; background: var(--bg); color: var(--navy);
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px; min-height: 100vh;
+  }
+  header {
+    background: var(--navy); color: white; padding: 20px 32px; position: relative; overflow: hidden;
+  }
+  header::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  header h1 { font-size: 24px; font-weight: 700; position: relative; }
+  header p { font-size: 20px; color: #a0b4e0; margin-top: 8px; position: relative; line-height: 1.6; }
+  .main { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+
+  /* 控制区 */
+  .control-card {
+    background: var(--card); border-radius: 12px; border: 1.5px solid #e2e8f4;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .control-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .control-row:last-child { margin-bottom: 0; }
+  .control-label { font-size: 20px; font-weight: 600; min-width: 80px; }
+  .slider-wrap { flex: 1; min-width: 160px; }
+  input[type=range] {
+    width: 100%; accent-color: var(--orange);
+    height: 6px; cursor: pointer;
+  }
+  .slider-val {
+    font-size: 20px; font-weight: 700; color: var(--orange);
+    min-width: 60px; text-align: center;
+  }
+  .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-pill {
+    background: #eef2ff; border-radius: 8px; padding: 8px 14px;
+    font-size: 20px; color: var(--navy);
+  }
+  .stat-pill strong { color: var(--blue); font-size: 20px; margin-right: 4px; }
+
+  /* 图표区 */
+  .chart-card {
+    background: var(--card); border-radius: 12px; border: 1.5px solid #e2e8f4;
+    padding: 24px 20px 16px; margin-bottom: 20px; position: relative;
+  }
+  canvas { display: block; }
+  .chart-title {
+    font-size: 20px; font-weight: 700; color: var(--navy);
+    text-align: center; margin-bottom: 12px;
+  }
+
+  /* 频数表 */
+  .table-card {
+    background: var(--card); border-radius: 12px; border: 1.5px solid #e2e8f4;
+    padding: 20px; margin-bottom: 20px; overflow-x: auto;
+  }
+  .table-card h3 { font-size: 20px; color: var(--muted); margin-bottom: 12px; font-weight: 500; }
+  table { width: 100%; border-collapse: collapse; font-size: 20px; }
+  thead th {
+    background: #f1f5ff; color: var(--muted); font-weight: 600;
+    padding: 10px 12px; text-align: center; border-bottom: 2px solid #e2e8f4;
+    white-space: nowrap;
+  }
+  tbody td { padding: 5px 12px; text-align: center; border-bottom: 1px solid #f0f4ff; }
+  tbody tr:last-child td { border-bottom: none; font-weight: 700; background: #f8faff; }
+
+  /* 警告条 */
+  .warn-bar {
+    padding: 12px 16px; border-radius: 8px; font-size: 20px;
+    margin-bottom: 12px; transition: all 0.3s; display: none;
+  }
+  .warn-bar.show { display: block; }
+  .warn-bar.too-big { background: #fff3cd; color: #92400e; border-left: 3px solid #f59e0b; }
+  .warn-bar.too-small { background: #fee2e2; color: #b91c1c; border-left: 3px solid #ef4444; }
+
+  /* 信息框 */
+  .info-box {
+    background: #eff6ff; border-left: 3px solid var(--blue);
+    padding: 14px 18px; border-radius: 0 8px 8px 0;
+    font-size: 20px; color: var(--navy); line-height: 1.9;
+  }
+  .info-box .formula {
+    display: inline-block; background: #dbeafe; padding: 2px 8px; border-radius: 4px;
+    font-family: monospace; font-size: 20px; color: var(--blue); margin: 0 2px;
+  }
+
+  /* 数据集选择器 */
+  #datasetSelect {
+    padding: 8px 12px; border-radius: 8px; border: 1.5px solid #d0d9f0;
+    font-family: inherit; font-size: 20px; color: var(--navy);
+    background: white; cursor: pointer;
+  }
+
+  /* 组距单位 */
+  .unit-label { font-size: 20px; color: var(--muted); }
+
+  /* 表格+图表并排 */
+  .chart-table-row {
+    display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start;
+  }
+  .chart-table-row .table-card { flex: 0 0 auto; width: 360px; margin-bottom: 0; }
+  .chart-table-row .chart-card { flex: 1; margin-bottom: 0; }
+
+  @media (max-width: 700px) {
+    .chart-table-row { flex-direction: column; }
+    .chart-table-row .table-card { width: 100%; }
+    .control-row { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>频数分布直方图构建器</h1>
+  <p>聪明的你在"圆浮岛"上调查了其中 100 位班班的身高</p>
+  <p style="font-size:20px;margin-top:4px">拖动滑块调整"组距"，观察直方图如何变化——组距太大或太小都会丢失信息。</p>
+</header>
+
+<div class="main">
+
+  <div class="control-card">
+    <div class="control-row">
+      <span class="control-label">组距</span>
+      <div class="slider-wrap">
+        <input type="range" id="sliderInterval" min="1" max="10" value="5" step="1" oninput="updateChart()">
+      </div>
+      <span class="slider-val" id="valInterval">5</span>
+      <span class="unit-label">cm</span>
+    </div>
+    <div class="stat-pills" id="statPills"></div>
+  </div>
+
+  <div id="warnBar" class="warn-bar"></div>
+
+  <div class="chart-table-row">
+    <div class="table-card">
+      <h3>📋 频数分布表</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>区间</th>
+            <th>频数</th>
+            <th>频率</th>
+          </tr>
+        </thead>
+        <tbody id="freqTableBody"></tbody>
+      </table>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:16px;">
+      <div class="chart-card" style="margin-bottom:0">
+        <h3 class="chart-title">频数分布直方图</h3>
+        <canvas id="myChart"></canvas>
+      </div>
+      <div class="info-box">
+        📐 <strong>组数怎么算？</strong><br>
+        先用 <span class="formula">极差 = 最大值 − 最小值</span> 算出数据的"跨度"，再除以组距，就能得到组数。<br>
+        但如果除出来不是整数，比如算出 7.6 组，我们不能只分 7 组（会漏掉一些数据），所以要<strong>向上取整</strong>，取 8 组。<br>
+        用一句话记住：<span class="formula">组数 = ⌈极差 ÷ 组距⌉</span>（结果不是整数时，往大的方向取整）<br><br>
+        📊 <span class="formula">频率 = 频数 ÷ 总人数</span><br>
+        💡 本图直方图每个矩形的<strong>高度</strong>表示该组的<strong>频数</strong>（落在这一区间的人数）。<br>
+        🎯 拖动滑块试试：组距<strong>过大</strong> → 分组太少，看不出分布；组距<strong>过小</strong> → 分组太多，规律反而模糊。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  const DATASETS = {
+    height: {
+      name: '身高',
+      unit: 'cm',
+      data: [150,154,155,156,157,158,158,159,160,160,
+             161,161,162,162,162,163,163,164,164,165,
+             165,165,166,166,166,166,167,167,167,167,
+             168,168,168,168,168,169,169,169,169,169,
+             170,170,170,170,170,170,171,171,171,171,
+             171,172,172,172,172,172,172,173,173,173,
+             173,173,174,174,174,174,175,175,175,175,
+             176,176,176,177,177,177,177,178,178,178,
+             179,179,180,180,180,181,181,182,182,183,
+             183,184,184,185,185,186,187,188,188,188],
+    }
+  };
+
+  let chart = null;
+
+  function getDataset() {
+    return DATASETS.height;
+  }
+
+  function computeGroups(data, interval) {
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const start = Math.floor(min / interval) * interval;
+    const groups = [];
+    for (let lo = start; lo < max; lo += interval) {
+      const hi = lo + interval;
+      const count = data.filter(v => v >= lo && v < hi).length;
+      groups.push({ lo, hi, count });
+    }
+    if (groups.length > 0) {
+      const last = groups[groups.length - 1];
+      last.count += data.filter(v => v === last.hi).length;
+    }
+    return groups;
+  }
+
+  function updateChart() {
+    const ds = getDataset();
+    const interval = parseInt(document.getElementById('sliderInterval').value);
+    document.getElementById('valInterval').textContent = interval;
+
+    const data = ds.data;
+    const n = data.length;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min;
+    const groups = computeGroups(data, interval);
+    const numGroups = groups.length;
+
+    // 统计pills：最大、最小、极差、组数
+    document.getElementById('statPills').innerHTML = `
+      <div class="stat-pill">最大 <strong>${max}</strong>${ds.unit}</div>
+      <div class="stat-pill">最小 <strong>${min}</strong>${ds.unit}</div>
+      <div class="stat-pill">极差 <strong>${range}</strong>${ds.unit}</div>
+      <div class="stat-pill">组数 <strong>${numGroups}</strong></div>
+    `;
+
+    // 警告
+    const warn = document.getElementById('warnBar');
+    if (numGroups <= 3) {
+      warn.className = 'warn-bar show too-big';
+      warn.textContent = '⚠️ 组距太大！只有 ' + numGroups + ' 组，数据分布特征被遮盖，无法看出规律。';
+    } else if (numGroups >= 15) {
+      warn.className = 'warn-bar show too-small';
+      warn.textContent = '⚠️ 组距太小！分成了 ' + numGroups + ' 组，每组频数太少，规律反而模糊了。建议组距 4~6。';
+    } else {
+      warn.className = 'warn-bar';
+    }
+
+    // 图表（横轴用边界值标注，落在每个矩形的边缘，参照图1）
+    const start = groups[0].lo;
+    const end = groups[groups.length - 1].hi;
+    const points = groups.map(g => ({ x: (g.lo + g.hi) / 2, y: g.count }));
+    const freqs = groups.map(g => g.count);
+
+    const barColors = groups.map(g => {
+      const pct = g.count / n;
+      if (pct >= 0.15) return 'rgba(45,91,227,0.85)';
+      if (pct >= 0.08) return 'rgba(45,91,227,0.55)';
+      return 'rgba(45,91,227,0.3)';
+    });
+
+    // 在每个矩形上边缘显示频数的插件
+    const barLabelPlugin = {
+      id: 'barLabel',
+      afterDatasetsDraw(c) {
+        const { ctx } = c;
+        const meta = c.getDatasetMeta(0);
+        ctx.save();
+        ctx.font = '700 19px "Noto Sans SC", sans-serif';
+        ctx.fillStyle = '#ef4444';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        meta.data.forEach((bar, i) => {
+          const val = freqs[i];
+          if (val > 0) ctx.fillText(val, bar.x, bar.y - 4);
+        });
+        ctx.restore();
+      }
+    };
+
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById('myChart'), {
+      type: 'bar',
+      plugins: [barLabelPlugin],
+      data: {
+        datasets: [{
+          label: '频数',
+          data: points,
+          backgroundColor: barColors,
+          borderColor: 'rgba(45,91,227,1)',
+          borderWidth: 1.5,
+          borderRadius: 2,
+          categoryPercentage: 1.0,
+          barPercentage: 1.0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => {
+                const g = groups[items[0].dataIndex];
+                const isLast = (items[0].dataIndex === groups.length - 1);
+                return isLast ? `区间 [${g.lo},${g.hi}]` : `区间 [${g.lo},${g.hi})`;
+              },
+              label: (item) => {
+                const g = groups[item.dataIndex];
+                return [
+                  `频数：${g.count} 人`,
+                  `频率：${(g.count/n*100).toFixed(1)}%`,
+                ];
+              }
+            },
+            backgroundColor: 'rgba(26,39,68,0.95)',
+            titleColor: '#fff',
+            bodyColor: '#a0b4e0',
+            padding: 10,
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            min: start,
+            max: end,
+            offset: false,
+            grid: { display: false },
+            ticks: {
+              stepSize: interval,
+              autoSkip: false,
+              maxRotation: 0,
+              font: { size: 19 },
+            },
+            title: { display: true, text: ds.name + '（' + ds.unit + '）', font: { size: 19 } }
+          },
+          y: {
+            grid: { color: '#e8eef8' },
+            title: { display: true, text: '频数', font: { size: 19 } },
+            ticks: { font: { size: 19 }, precision: 0 }
+          }
+        }
+      }
+    });
+
+    // 频数表
+    const tbody = document.getElementById('freqTableBody');
+    tbody.innerHTML = '';
+    let totalCount = 0;
+    groups.forEach((g, i) => {
+      totalCount += g.count;
+      const rate = (g.count / n * 100).toFixed(1);
+      const tr = document.createElement('tr');
+      const isLast = (i === groups.length - 1);
+      const intervalStr = isLast ? `[${g.lo}, ${g.hi}]` : `[${g.lo}, ${g.hi})`;
+      tr.innerHTML = `
+        <td>${intervalStr}</td>
+        <td>${g.count}</td>
+        <td>${rate}%</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    const sumTr = document.createElement('tr');
+    sumTr.innerHTML = `<td>合计</td><td>${totalCount}</td><td>100%</td>`;
+    tbody.appendChild(sumTr);
+  }
+
+  const canvas = document.getElementById('myChart');
+  canvas.style.height = '280px';
+  new ResizeObserver(() => updateChart()).observe(canvas.parentElement);
+  updateChart();
+</script>
+</body>
+</html>

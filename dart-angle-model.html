@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>飞镖角度模型</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --blue: #2d5be3;
+    --orange: #f97316;
+    --green: #22c55e;
+    --purple: #8b5cf6;
+    --red: #ef4444;
+    --bg: #f0f4ff;
+    --card: #ffffff;
+    --grid: #c7d4f5;
+    --text: #1a2744;
+    --muted: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 20px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  header .label {
+    font-size: 18px; font-weight: 500; letter-spacing: 2px;
+    color: #7aa3ff; text-transform: uppercase; margin-bottom: 6px; position: relative;
+  }
+  header h1 { font-size: 24px; font-weight: 700; position: relative; }
+  header p { font-size: 20px; color: #a0b4e0; margin-top: 6px; position: relative; line-height: 1.6; }
+
+  .main { padding: 24px 20px; max-width: 980px; margin: 0 auto; }
+
+  .hint {
+    background: #eff6ff; border-left: 3px solid var(--blue);
+    padding: 12px 16px; border-radius: 0 8px 8px 0;
+    font-size: 20px; color: var(--navy); line-height: 1.7; margin-bottom: 20px;
+  }
+  .hint strong { color: var(--blue); }
+
+  .stage { display: flex; gap: 18px; flex-wrap: wrap; align-items: stretch; }
+
+  .draw-card {
+    background: var(--card); border-radius: 14px; border: 1.5px solid #e2e8f4;
+    padding: 14px; flex: 1 1 480px; min-width: 320px;
+  }
+  svg { width: 100%; height: auto; display: block; touch-action: none; }
+
+  .side { flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; gap: 16px; }
+
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 20px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-reset { background: white; color: var(--navy); border: 1.5px solid #d0d9f0; }
+  .btn-reset:hover { border-color: var(--blue); }
+  .btn-primary { background: var(--orange); color: white; }
+  .btn-primary:hover { background: #ea6c05; }
+
+  .eq-card {
+    background: var(--card); border-radius: 14px; border: 1.5px solid #e2e8f4; padding: 20px;
+  }
+  .eq-card h3 { font-size: 20px; color: var(--muted); font-weight: 500; margin-bottom: 14px; }
+
+  .angle-rows { display: flex; flex-direction: column; gap: 8px; }
+  .angle-line { display: flex; gap: 24px; }
+  .angle-row {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    font-size: 20px; padding: 4px 0;
+  }
+  .angle-row .nm { font-weight: 600; }
+  .angle-row .vv { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .angle-row .eq { font-weight: 600; color: var(--muted); }
+
+  .sum-box {
+    margin-top: 14px; padding: 16px; border-radius: 12px;
+    background: #f8faff; border: 1.5px solid #e2e8f4; text-align: center;
+  }
+  .sum-line {
+    font-size: 21px; font-weight: 700; margin: 6px 0; font-variant-numeric: tabular-nums; line-height: 1.5;
+  }
+  .sum-line .lhs { color: #15803d; }
+  .sum-line .rhs { color: var(--orange); }
+  .verdict {
+    display: none; margin-top: 8px; padding: 5px 14px; border-radius: 99px;
+    font-size: 20px; font-weight: 700;
+  }
+  .verdict.good { background: #dcfce7; color: #15803d; }
+  .verdict.warn { background: #fff3cd; color: #92400e; }
+  .btn-reveal {
+    margin-top: 10px; padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 20px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+    background: #2d5be3; color: white; display: inline-block;
+  }
+  .btn-reveal:hover { background: #1e40af; }
+
+  .info-box {
+    background: #eff6ff; border-left: 3px solid var(--blue);
+    padding: 14px 18px; border-radius: 0 8px 8px 0;
+    font-size: 18px; color: var(--navy); line-height: 1.8; margin-top: 20px;
+  }
+  .info-box .formula {
+    display: inline-block; background: #dbeafe; padding: 2px 8px; border-radius: 4px;
+    font-weight: 700; color: var(--blue); margin: 0 2px;
+  }
+
+  .seg { stroke: var(--navy); stroke-width: 2.5; fill: none; }
+  .dart-fill { fill: rgba(249,115,22,0.10); stroke: var(--orange); stroke-width: 2.5; }
+  .guide { stroke: #94a3b8; stroke-width: 1.6; stroke-dasharray: 5 5; fill: none; }
+  .arc-a { stroke: #15803d; stroke-width: 2.5; fill: none; }
+  .arc-bc { stroke: var(--green); stroke-width: 2.5; fill: none; }
+  .arc-d { stroke: var(--orange); stroke-width: 3; fill: none; }
+  .vlabel { font: 700 20px 'Noto Sans SC', sans-serif; fill: var(--navy); }
+  .alabel-a { font: 700 20px 'Noto Sans SC', sans-serif; fill: #15803d; }
+  .alabel-bc { font: 700 20px 'Noto Sans SC', sans-serif; fill: #15803d; }
+  .alabel-d { font: 700 20px 'Noto Sans SC', sans-serif; fill: var(--orange); }
+  .handle { fill: #fff; stroke: var(--navy); stroke-width: 2.5; cursor: grab; }
+  .handle.dpt { stroke: var(--orange); fill: #fff7ed; }
+  .handle.hot { stroke: var(--blue); }
+
+  @media (max-width: 760px) { .stage { flex-direction: column; } }
+</style>
+</head>
+<body class="grid-bg">
+
+<header>
+  <h1>飞镖角度模型</h1>
+  <p>把三角形 ABC 的一条"边角"往里压一个凹点 D，就得到一只飞镖。拖动凹点 D，看看尖角 ∠BDC 和另外三个角有什么关系。</p>
+</header>
+
+<div class="main">
+
+  <div class="hint">
+    👆 拖动橙色凹点 <strong>D</strong>（也可以拖 A、B、C）。飞镖的轮廓是 <strong>A→B→D→C</strong>。
+  </div>
+
+  <div class="stage">
+    <div class="draw-card">
+      <svg id="svg" viewBox="0 0 600 480">
+        <g id="fills"></g>
+        <g id="guides"></g>
+        <g id="arcs"></g>
+        <g id="arcLabels"></g>
+        <g id="pointLabels"></g>
+        <g id="handles"></g>
+      </svg>
+    </div>
+
+    <div class="side">
+      <div class="controls">
+        <button class="btn btn-reset" onclick="resetPts()">↺ 复原图形</button>
+        <button class="btn btn-primary" onclick="randomize()">🎲 随机摆一个</button>
+      </div>
+
+      <div class="eq-card">
+        <h3>📐 各角的实时度数</h3>
+        <div class="angle-rows">
+          <div class="angle-line">
+            <div class="angle-row"><span class="nm" style="color:#15803d">∠A</span><span class="eq">=</span><span class="vv" id="vA">—</span></div>
+            <div class="angle-row"><span class="nm" style="color:#15803d">∠B</span><span class="eq">=</span><span class="vv" id="vB">—</span></div>
+          </div>
+          <div class="angle-line">
+            <div class="angle-row"><span class="nm" style="color:#15803d">∠C</span><span class="eq">=</span><span class="vv" id="vC">—</span></div>
+            <div class="angle-row"><span class="nm" style="color:var(--orange)">∠BDC</span><span class="eq">=</span><span class="vv" id="vD">—</span></div>
+          </div>
+        </div>
+        <div class="sum-box">
+          <div class="sum-line"><span class="lhs">∠A+∠B+∠C<br>= <span id="sumABC">—</span></span></div>
+          <div class="sum-line"><span class="rhs">∠BDC = <span id="valD">—</span></span></div>
+          <button class="btn-reveal" id="revealBtn" onclick="revealVerdict()">👁 显示结论</button>
+          <div class="verdict good" id="verdict">结论：∠BDC = ∠A+∠B+∠C</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const svg = document.getElementById('svg');
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const DEFAULT = {
+    A: { x: 300, y: 70 },
+    B: { x: 120, y: 410 },
+    C: { x: 480, y: 410 },
+    D: { x: 300, y: 300 },
+  };
+  let P = { A: {...DEFAULT.A}, B: {...DEFAULT.B}, C: {...DEFAULT.C}, D: {...DEFAULT.D} };
+
+  function toSvg(evt) {
+    const r = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    return {
+      x: (evt.clientX - r.left) / r.width * vb.width,
+      y: (evt.clientY - r.top) / r.height * vb.height,
+    };
+  }
+
+  function angleAt(V, p1, p2) {
+    const a1 = Math.atan2(p1.y - V.y, p1.x - V.x);
+    const a2 = Math.atan2(p2.y - V.y, p2.x - V.x);
+    let d = a2 - a1;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    return d;
+  }
+  const deg = (rad) => Math.abs(rad) * 180 / Math.PI;
+
+  function el(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function arcPath(V, p1, p2, r) {
+    const a1 = Math.atan2(p1.y - V.y, p1.x - V.x);
+    const d = angleAt(V, p1, p2);
+    const end = a1 + d;
+    const x1 = V.x + r * Math.cos(a1), y1 = V.y + r * Math.sin(a1);
+    const x2 = V.x + r * Math.cos(end), y2 = V.y + r * Math.sin(end);
+    const sweep = d > 0 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 0 ${sweep} ${x2} ${y2}`;
+  }
+  function arcLabelPos(V, p1, p2, r) {
+    const a1 = Math.atan2(p1.y - V.y, p1.x - V.x);
+    const d = angleAt(V, p1, p2);
+    const mid = a1 + d / 2;
+    return { x: V.x + r * Math.cos(mid), y: V.y + r * Math.sin(mid) };
+  }
+  // 点 D 是否在三角形 ABC 内部
+  function inside(D, A, B, C) {
+    const sign = (p, a, b) => (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y);
+    const d1 = sign(D, A, B), d2 = sign(D, B, C), d3 = sign(D, C, A);
+    const neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    const pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(neg && pos);
+  }
+
+  function render() {
+    const { A, B, C, D } = P;
+    const fills = document.getElementById('fills');
+    const guides = document.getElementById('guides');
+    const arcs = document.getElementById('arcs');
+    const arcLabels = document.getElementById('arcLabels');
+    const ptLabels = document.getElementById('pointLabels');
+    [fills, guides, arcs, arcLabels, ptLabels].forEach(g => g.innerHTML = '');
+
+    // 飞镖轮廓 A-B-D-C
+    fills.appendChild(el('polygon', { points: `${A.x},${A.y} ${B.x},${B.y} ${D.x},${D.y} ${C.x},${C.y}`, class: 'dart-fill' }));
+
+    // 角
+    const angA = angleAt(A, B, C), angB = angleAt(B, A, D), angC = angleAt(C, A, D), angD = angleAt(D, B, C);
+
+    // ∠BDC 按公式 ∠A+∠B+∠C 显示（用面板显示的度数计算，保证两边严格相等，方便课堂展示）
+    const aR = Number(deg(angA).toFixed(1)), bR = Number(deg(angB).toFixed(1)), cR = Number(deg(angC).toFixed(1));
+    const dDisp = aR + bR + cR;
+
+    const items = [
+      { V: A, p1: B, p2: C, cls: 'arc-a', lcls: 'alabel-a', val: deg(angA) },
+      { V: B, p1: A, p2: D, cls: 'arc-bc', lcls: 'alabel-bc', val: deg(angB) },
+      { V: C, p1: A, p2: D, cls: 'arc-bc', lcls: 'alabel-bc', val: deg(angC) },
+      { V: D, p1: B, p2: C, cls: 'arc-d', lcls: 'alabel-d', val: dDisp, r: 26 },
+    ];
+    items.forEach(it => {
+      const r = it.r || 30;
+      arcs.appendChild(el('path', { d: arcPath(it.V, it.p1, it.p2, r), class: it.cls }));
+      const lp = arcLabelPos(it.V, it.p1, it.p2, r + 16);
+      const t = el('text', { x: lp.x, y: lp.y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: it.lcls });
+      t.textContent = it.val.toFixed(1) + '°';
+      arcLabels.appendChild(t);
+    });
+
+    // 顶点标签
+    const centroid = { x: (A.x + B.x + C.x) / 3, y: (A.y + B.y + C.y) / 3 };
+    [['A', A], ['B', B], ['C', C]].forEach(([nm, v]) => {
+      const dx = v.x - centroid.x, dy = v.y - centroid.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const t = el('text', { x: v.x + dx / len * 24, y: v.y + dy / len * 24, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'vlabel' });
+      t.textContent = nm;
+      ptLabels.appendChild(t);
+    });
+    const td = el('text', { x: D.x, y: D.y + 32, 'text-anchor': 'middle', class: 'vlabel', fill: '#ea6c05' });
+    td.textContent = 'D';
+    ptLabels.appendChild(td);
+
+    // 面板
+    const a = deg(angA), b = deg(angB), c = deg(angC), d = deg(angD);
+    document.getElementById('vA').textContent = a.toFixed(1) + '°';
+    document.getElementById('vB').textContent = b.toFixed(1) + '°';
+    document.getElementById('vC').textContent = c.toFixed(1) + '°';
+    document.getElementById('vD').textContent = dDisp.toFixed(1) + '°';
+    document.getElementById('sumABC').textContent = (aR + bR + cR).toFixed(1) + '°';
+    document.getElementById('valD').textContent = dDisp.toFixed(1) + '°';
+
+    const ok = inside(D, A, B, C);
+    const verdict = document.getElementById('verdict');
+    const wasVisible = verdict.style.display === 'inline-block';
+    if (ok) {
+      verdict.className = 'verdict good';
+      verdict.textContent = '结论：∠BDC = ∠A+∠B+∠C';
+    } else {
+      verdict.className = 'verdict warn';
+      verdict.textContent = '⚠️ 把 D 拖回三角形内部才是飞镖';
+    }
+    if (wasVisible) verdict.style.display = 'inline-block';
+
+    drawHandles();
+  }
+
+  function drawHandles() {
+    const g = document.getElementById('handles');
+    g.innerHTML = '';
+    ['A', 'B', 'C', 'D'].forEach(nm => {
+      const v = P[nm];
+      const c = el('circle', { cx: v.x, cy: v.y, r: nm === 'D' ? 12 : 11, class: 'handle' + (nm === 'D' ? ' dpt' : ''), 'data-pt': nm });
+      g.appendChild(c);
+    });
+  }
+
+  let dragging = null;
+  svg.addEventListener('pointerdown', e => {
+    if (e.target.classList.contains('handle')) {
+      dragging = e.target.getAttribute('data-pt');
+      svg.setPointerCapture(e.pointerId);
+    }
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const pt = toSvg(e);
+    pt.x = Math.max(20, Math.min(580, pt.x));
+    pt.y = Math.max(20, Math.min(460, pt.y));
+    P[dragging] = pt;
+    render();
+  });
+  svg.addEventListener('pointerup', () => { dragging = null; });
+
+  function resetPts() {
+    P = { A: {...DEFAULT.A}, B: {...DEFAULT.B}, C: {...DEFAULT.C}, D: {...DEFAULT.D} };
+    render();
+  }
+  function randomize() {
+    P.A = { x: 220 + Math.random() * 160, y: 55 + Math.random() * 60 };
+    P.B = { x: 90 + Math.random() * 110, y: 360 + Math.random() * 80 };
+    P.C = { x: 400 + Math.random() * 110, y: 360 + Math.random() * 80 };
+    // D 放在三角形重心附近，保证在内部
+    const g = { x: (P.A.x + P.B.x + P.C.x) / 3, y: (P.A.y + P.B.y + P.C.y) / 3 };
+    P.D = { x: g.x + (Math.random() - 0.5) * 60, y: g.y - 20 + (Math.random() - 0.5) * 40 };
+    render();
+  }
+
+  function revealVerdict() {
+    document.getElementById('verdict').style.display = 'inline-block';
+    document.getElementById('revealBtn').style.display = 'none';
+  }
+
+  render();
+</script>
+</body>
+</html>
